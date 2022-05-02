@@ -47,8 +47,8 @@ class RemoveCosmicRays(OpenWdfFile):
             plt.show()
         return np.array(D)
 
-    def als_baseline(self,intensities,deriv_order=11, asymmetry_param=0.05, smoothness_param=1e5,
-                     max_iters=25, conv_thresh=1e-5, verbose=False):
+    def als_baseline(self,intensities,deriv_order=11, asymmetry_param=0.05, smoothness_param=1e6,
+                     max_iters=20, conv_thresh=1e-7, verbose=False):
         '''Computes the asymmetric least squares baseline.
         * http://www.science.uva.nl/~hboelens/publications/draftpub/Eilers_2005.pdf
         smoothness_param: Relative importance of smoothness of the predicted response.
@@ -125,7 +125,7 @@ class RemoveCosmicRays(OpenWdfFile):
         return mean
 
 class PreProcessing(RemoveCosmicRays):
-    def __init__(self,file,remove_cosmic_rays=True):
+    def __init__(self,file,remove_cosmic_rays=False):
         super().__init__(file)
         if file == None:
             self.D = self.sp
@@ -134,9 +134,9 @@ class PreProcessing(RemoveCosmicRays):
                                                                remove_cosmic_rays=remove_cosmic_rays,
                                                                threshold=15)
 
-    def subtract_ALS_all(self,spectrum,deriv_order=11):
+    def subtract_ALS_all(self,spectrum,deriv_order=14):
         for i in range(len(spectrum)):
-            spectrum[i] = self.als_baseline(spectrum[i],deriv_order=deriv_order)
+            spectrum[i] = self.als_baseline(spectrum[i],deriv_order=deriv_order,max_iters=10)
         return spectrum
 
     def mean_spectrum(self,spectrum):
@@ -153,14 +153,15 @@ class PreProcessing(RemoveCosmicRays):
         return norm2
 
 class CLS(PreProcessing):
-    def __init__(self,file,c,pure_spectra_path=None,remove_cosmic_rays=True):
+    def __init__(self,file,c=None,pure_spectra_path=None,remove_cosmic_rays=False):
         if pure_spectra_path != None:
             self.S_T,_ = self.unpack_components(path=pure_spectra_path)
         else:
             self.S_T = np.load("data/Blind_test/raw/numpy_arr/S_T_K_means.npy",allow_pickle=True)
         self.c = c
         super().__init__(file)
-        self.D = self.unpack_data_cube(reader=WDFReader(file),spectra=WDFReader(file).spectra,remove_cosmic_rays=remove_cosmic_rays,threshold=20)
+        self.D = self.unpack_data_cube(reader=WDFReader(file),spectra=WDFReader(file).spectra,
+                                       remove_cosmic_rays=remove_cosmic_rays,threshold=15)
         self.D = self.norm_by_unit_vector(self.subtract_ALS_all(self.D))
 
     def return_D_with_wn(self):
@@ -173,7 +174,6 @@ class CLS(PreProcessing):
         S_T = []
         filenames = []
         for f in glob.glob(path + "/*"):
-            # print(f)
             if not os.path.isdir(f):
                 if os.path.basename(f[-4:-1]) != ".np":
                     spectra = self.unpack_data_cube(reader=WDFReader(f),spectra=WDFReader(f).spectra)
@@ -182,6 +182,8 @@ class CLS(PreProcessing):
                     S_T.append(mean_spectrum)
                     filenames.append(f)
         if save_S_T:
+            S_t = S_T
+            S_T[2],S_T[3] = S_t[3],S_t[2]
             np.save("data/Blind_test/raw/numpy_arr/S_T_K_means.npy",np.array(S_T))
         return np.array(S_T),filenames
 
@@ -216,10 +218,9 @@ class CLS(PreProcessing):
             i = int(idx[0][0])
             j = int(idx[0][-1])
             similarity = self.least_sq(self.norm_by_unit_vector(
-                self.als_baseline(D_2d[i,j])).T,S_T)
+                self.als_baseline(D_2d[i,j]))[-1,:],S_T)
             # print(np.sum(similarity))
-            A[i,j] = (1-(similarity[s_i]/np.sum(similarity)))*D_1d_i[i,j]*100
-            # A[i,j]
+            A[i,j] = ((D_1d_i[i,j]+similarity[s_i])/2)*100
         return A.T
 
     def refold_map(self,A,S_T,it_range=5, n=0):
@@ -249,7 +250,7 @@ class Plotting(CLS):
         fig, axes = plt.subplots()
         for arg in args:
             axes.plot(x,arg,linestyle="--")
-        axes.plot(self.wn,self.D,label="big map mean spectra",linewidth=3)
+        # axes.plot(self.wn,self.D,label="big map mean spectra",linewidth=3)
         plt.legend()
         plt.show()
 
