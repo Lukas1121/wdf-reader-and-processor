@@ -51,8 +51,3 @@ fig,axes = open_wdf.Plotting.plot_maps_from_arr(obj,z=[A_butamben,A_capryol,A_tr
                    ticks=[(0,55),(-25,30),(0,40),(0,100)])
 # plt.savefig("data/Blind_test/raw/plots/{0}.jpg".format(os.path.basename(file)[0:-4]))
 plt.show()
-
-
-
-
-
