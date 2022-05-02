@@ -15,8 +15,8 @@ D,wn = obj.return_D_with_wn()
 # D = obj.mean_spectrum(D)
 # np.save("data/Blind_test/raw/numpy_arr/big_map_K_mean.npy",np.array((wn, D),dtype=object))
 # D_wn = np.load("data/Blind_test/raw/numpy_arr/big_map_K_mean.npy",allow_pickle=True)
-# S_T,_ = obj.unpack_components(path_pure_spectra,save_S_T=True)
-S_T = np.load("data/Blind_test/raw/numpy_arr/S_T_K_means.npy",allow_pickle=True)
+S_T,_ = obj.unpack_components(path_pure_spectra,save_S_T=True)
+# S_T = np.load("data/Blind_test/raw/numpy_arr/S_T_K_means.npy",allow_pickle=True)
 
 def least_sq_loop(D,S_T,similarities_dict={"apifil":[],"butamben":[],"capryol":[],"transcutol":[]}):
     sum_lst = [[],[],[],[]]
